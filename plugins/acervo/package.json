@@ -1,0 +1,12 @@
+{
+  "name": "acervo-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Conector MCP do acervo — autentica no portal e instala skills no projeto.",
+  "bin": { "acervo-mcp": "server.mjs" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "jszip": "^3.10.1"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "ghbdatainsight",
+  "owner": {
+    "name": "ghbdatainsight"
+  },
+  "description": "Acervo — conector pro Claude Code",
+  "plugins": [
+    {
+      "name": "acervo",
+      "source": "./plugins/acervo",
+      "description": "Conecta o Claude Code ao seu acervo: login + instalar skills no projeto.",
+      "version": "0.1.0"
+    }
+  ]
+}

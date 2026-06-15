@@ -1,0 +1,9 @@
+{
+  "name": "acervo",
+  "displayName": "Acervo",
+  "description": "Conecta o Claude Code ao seu acervo: instala suas skills e materiais direto no projeto — sem baixar, copiar ou colar.",
+  "version": "0.1.0",
+  "repository": "https://github.com/ghbdatainsight/acervo",
+  "keywords": ["acervo", "claude-code", "skills", "mcp"],
+  "mcpServers": "./.mcp.json"
+}
