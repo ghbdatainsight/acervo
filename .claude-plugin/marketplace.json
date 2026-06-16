@@ -9,7 +9,7 @@
       "name": "acervo",
       "source": "./plugins/acervo",
       "description": "Conecta o Claude Code ao seu acervo: login + instalar skills no projeto.",
-      "version": "0.1.0"
+      "version": "0.2.0"
     }
   ]
 }

@@ -191,18 +191,111 @@ async function httpListar() {
 async function httpBuscar(args) {
   const query = String(args?.query ?? "").trim();
   if (query.length < 2) return text("Busca precisa de ao menos 2 caracteres.", true);
+  const token = await loadToken();
+  if (!token) return NEED_LOGIN;
+  const blocks = [];
+  for (const kind of ["skill", "prompt", "doc"]) {
+    const r = await fetch(
+      `${PORTAL_URL}/api/resources/search?kind=${kind}&q=${encodeURIComponent(query)}`,
+      { headers: { authorization: `Bearer ${token}` } }
+    );
+    if (r.status === 401) return text("Sessão expirada. Rode `login` de novo.", true);
+    if (!r.ok) continue;
+    const { results } = await r.json();
+    for (const hit of results || []) {
+      const files = (hit.matchedFiles || [])
+        .slice(0, 3)
+        .map((f) => `    ${f.path}: ${f.snippet}`)
+        .join("\n");
+      blocks.push(`• [${kind}] ${hit.slug} — ${hit.name}` + (files ? `\n${files}` : ""));
+    }
+  }
+  return text(
+    blocks.length
+      ? `${blocks.length} resultado(s) para "${query}":\n\n${blocks.join("\n")}`
+      : `Nada no seu acervo para "${query}".`
+  );
+}
+
+async function httpLer(args) {
+  const slug = String(args?.slug ?? "").trim();
+  const wantPath = String(args?.path ?? "").trim();
+  if (!SLUG_RE.test(slug)) return text(`Slug inválido: "${slug}".`, true);
+  const token = await loadToken();
+  if (!token) return NEED_LOGIN;
   const me = await fetchMe();
   if (me.needLogin) return NEED_LOGIN;
   if (!me.ok) return text(`Falha (${me.status}).`, true);
-  const q = fold(query);
-  const hits = (me.data.resources || []).filter(
-    (r) => fold(r.name).includes(q) || fold(r.slug).includes(q)
-  );
+  const found = (me.data.resources || []).find((r) => r.slug === slug);
+  if (!found) return text(`"${slug}" não está no seu acervo.`, true);
+  const kind = found.kind;
+  const candidates = wantPath
+    ? [wantPath]
+    : ["SKILL.md", "README.md", "skill.md", "prompt.md"];
+  for (const p of candidates) {
+    const r = await fetch(
+      `${PORTAL_URL}/api/resources/${kind}/${encodeURIComponent(slug)}/file?path=${encodeURIComponent(p)}`,
+      { headers: { authorization: `Bearer ${token}` } }
+    );
+    if (r.status === 401) return text("Sessão expirada. Rode `login` de novo.", true);
+    if (!r.ok) continue;
+    const data = await r.json();
+    if (data.status === "text") {
+      return text(`# ${found.name} — ${p}\n\n${data.content}`);
+    }
+    if (data.status === "binary" || data.status === "toolarge") {
+      const why = data.status === "binary" ? "binário" : "grande demais";
+      return text(`"${p}" é ${why}; instale a skill (acervo_instalar) pra abrir.`, true);
+    }
+  }
   return text(
-    hits.length
-      ? `${hits.length} resultado(s) para "${query}":\n\n` +
-          hits.map((r) => `• [${r.kind}] ${r.slug} — ${r.name}`).join("\n")
-      : `Nada no seu acervo para "${query}".`
+    wantPath
+      ? `Não achei "${wantPath}" em ${slug}.`
+      : `Não achei um arquivo principal em ${slug}. Passe path=<arquivo> (use acervo_buscar pra ver os caminhos).`,
+    true
+  );
+}
+
+async function httpCurso(args) {
+  const token = await loadToken();
+  if (!token) return NEED_LOGIN;
+  const query = String(args?.query ?? "").trim();
+  const lesson = String(args?.lesson ?? "").trim();
+  const qs = lesson
+    ? `?lesson=${encodeURIComponent(lesson)}`
+    : query
+      ? `?q=${encodeURIComponent(query)}`
+      : "";
+  const r = await fetch(`${PORTAL_URL}/api/portal/mcp/course${qs}`, {
+    headers: { authorization: `Bearer ${token}` }
+  });
+  if (r.status === 401) return text("Sessão expirada. Rode `login` de novo.", true);
+  if (r.status === 403) {
+    const e = await r.json().catch(() => ({}));
+    return text(
+      e.error === "course_pending"
+        ? "Seu curso ainda não foi liberado pela organização."
+        : "Você não tem o curso liberado.",
+      true
+    );
+  }
+  if (r.status === 404) return text("Conteúdo do curso indisponível.", true);
+  if (!r.ok) return text(`Falha (${r.status}).`, true);
+  const data = await r.json();
+  if (lesson) return text(data.text || "Lição vazia.");
+  if (query) {
+    const hits = data.results || [];
+    return text(
+      hits.length
+        ? `${hits.length} resultado(s) na apostila para "${query}":\n\n` +
+            hits.map((h) => `• [${h.sec}] ${h.title} (lesson=${h.id})\n    ${h.snippet}`).join("\n")
+        : `Nada na apostila para "${query}".`
+    );
+  }
+  const lessons = data.lessons || [];
+  return text(
+    `Apostila: ${data.title} (${lessons.length} lições)\n\n` +
+      lessons.map((l) => `• [${l.sec}] ${l.title} — ${l.time} (lesson=${l.id})`).join("\n")
   );
 }
 
@@ -362,7 +455,7 @@ async function localInstalar(args) {
 
 const baseTools = [
   { name: "acervo_listar", description: "Lista os recursos do acervo do workshop.", inputSchema: { type: "object", properties: {}, additionalProperties: false } },
-  { name: "acervo_buscar", description: "Busca no acervo por nome/descrição.", inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"], additionalProperties: false } },
+  { name: "acervo_buscar", description: "Busca full-text no acervo (nome, descrição e CONTEÚDO dos arquivos), com escopo do aluno.", inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"], additionalProperties: false } },
   { name: "acervo_instalar", description: "Instala uma skill do acervo em .claude/skills/<slug>/.", inputSchema: { type: "object", properties: { slug: { type: "string" }, force: { type: "boolean" } }, required: ["slug"], additionalProperties: false } }
 ];
 const loginTool = {
@@ -370,9 +463,20 @@ const loginTool = {
   description: "Conecta este terminal à sua conta do portal (abre o browser pra autenticar). Use code=<código> como fallback.",
   inputSchema: { type: "object", properties: { code: { type: "string" } }, additionalProperties: false }
 };
-const TOOLS = MODE === "http" ? [loginTool, { name: "whoami", description: "Mostra com qual conta o terminal está conectado.", inputSchema: { type: "object", properties: {}, additionalProperties: false } }, ...baseTools] : baseTools;
+const lerTool = {
+  name: "acervo_ler",
+  description: "Lê/preview o texto de um arquivo do acervo SEM instalar. slug obrigatório; path opcional (default: arquivo principal).",
+  inputSchema: { type: "object", properties: { slug: { type: "string" }, path: { type: "string" } }, required: ["slug"], additionalProperties: false }
+};
+const cursoTool = {
+  name: "acervo_curso",
+  description: "Conteúdo da apostila do curso. Sem args = índice; query = busca; lesson=<id> = texto da lição.",
+  inputSchema: { type: "object", properties: { query: { type: "string" }, lesson: { type: "string" } }, additionalProperties: false }
+};
+const whoamiTool = { name: "whoami", description: "Mostra com qual conta o terminal está conectado.", inputSchema: { type: "object", properties: {}, additionalProperties: false } };
+const TOOLS = MODE === "http" ? [loginTool, whoamiTool, ...baseTools, lerTool, cursoTool] : baseTools;
 
-const server = new Server({ name: "acervo-mcp", version: "0.1.0" }, { capabilities: { tools: {} } });
+const server = new Server({ name: "acervo-mcp", version: "0.2.0" }, { capabilities: { tools: {} } });
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
 server.setRequestHandler(CallToolRequestSchema, async (req) => {
   const { name, arguments: args } = req.params;
@@ -382,6 +486,8 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       case "whoami": return httpWhoami();
       case "acervo_listar": return httpListar();
       case "acervo_buscar": return httpBuscar(args);
+      case "acervo_ler": return httpLer(args);
+      case "acervo_curso": return httpCurso(args);
       case "acervo_instalar": return httpInstalar(args);
     }
   } else {
