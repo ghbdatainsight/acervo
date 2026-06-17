@@ -455,7 +455,7 @@ async function localInstalar(args) {
 
 const baseTools = [
   { name: "acervo_listar", description: "Lista os recursos do acervo do workshop.", inputSchema: { type: "object", properties: {}, additionalProperties: false } },
-  { name: "acervo_buscar", description: "Busca full-text no acervo (nome, descrição e CONTEÚDO dos arquivos), com escopo do aluno.", inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"], additionalProperties: false } },
+  { name: "acervo_buscar", description: "Busca full-text no ACERVO de skills/prompts/docs do aluno (nome, descrição e conteúdo dos arquivos). NÃO é a apostila do curso — para qualquer pergunta sobre a apostila/curso/aula/lição use acervo_curso.", inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"], additionalProperties: false } },
   { name: "acervo_instalar", description: "Instala uma skill do acervo em .claude/skills/<slug>/.", inputSchema: { type: "object", properties: { slug: { type: "string" }, force: { type: "boolean" } }, required: ["slug"], additionalProperties: false } }
 ];
 const loginTool = {
@@ -470,13 +470,13 @@ const lerTool = {
 };
 const cursoTool = {
   name: "acervo_curso",
-  description: "Conteúdo da apostila do curso. Sem args = índice; query = busca; lesson=<id> = texto da lição.",
+  description: "APOSTILA / MATERIAL DO CURSO do aluno (aulas, lições, o que foi ensinado no treinamento). Use SEMPRE esta tool — e não acervo_buscar — para QUALQUER pergunta sobre a apostila, o curso, uma aula, lição, módulo ou tema do treinamento. Sem args = índice das lições; query = busca no texto da apostila; lesson=<id> = texto completo de uma lição.",
   inputSchema: { type: "object", properties: { query: { type: "string" }, lesson: { type: "string" } }, additionalProperties: false }
 };
 const whoamiTool = { name: "whoami", description: "Mostra com qual conta o terminal está conectado.", inputSchema: { type: "object", properties: {}, additionalProperties: false } };
 const TOOLS = MODE === "http" ? [loginTool, whoamiTool, ...baseTools, lerTool, cursoTool] : baseTools;
 
-const server = new Server({ name: "acervo-mcp", version: "0.2.0" }, { capabilities: { tools: {} } });
+const server = new Server({ name: "acervo-mcp", version: "0.2.1" }, { capabilities: { tools: {} } });
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
 server.setRequestHandler(CallToolRequestSchema, async (req) => {
   const { name, arguments: args } = req.params;

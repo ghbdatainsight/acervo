@@ -19,11 +19,12 @@ Reinicie o Claude Code se ele pedir.
 
 ## 2. Conectar a sua conta (uma vez)
 ```
-login
+login no acervo
 ```
 
-Abre o navegador → clique **Conectar terminal**. Se você já estiver logado, é um
-clique só.
+Escreva **login no acervo** (não só `login`, senão o Claude confunde com o login
+dele). Abre o navegador → clique **Conectar terminal**. Se você já estiver
+logado, é um clique só, e a aba mostra "conectado com sucesso".
 
 ## 3. Usar
 - **`whoami`** — mostra a sua conta e o que você tem acesso

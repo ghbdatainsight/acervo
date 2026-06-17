@@ -9,7 +9,7 @@ Você guia o primeiro contato do aluno com o acervo no Claude Code. Faça em ord
 
 1. Rode a tool `login` pra conectar a conta dele. Se `whoami` já responde com uma conta, pule este passo.
 2. Rode `acervo_listar` e resuma em 1 linha cada skill que ele tem.
-3. Pergunte o que ele quer fazer. Ofereça `acervo_buscar` por um tema, ou `acervo_curso` pra ver a apostila do curso.
+3. Pergunte o que ele quer fazer. Ofereça `acervo_buscar` por um tema (busca nas skills/prompts/docs). Para QUALQUER pergunta sobre a apostila/curso/aula/lição, use `acervo_curso` (NÃO `acervo_buscar`).
 4. Quando ele escolher uma skill, use `acervo_ler` pra explicar o que ela faz ANTES de instalar; se ele topar, `acervo_instalar` e já use ela na mesma conversa.
 
 Seja breve e prático. Não despeje tudo de uma vez — é o primeiro contato dele.
